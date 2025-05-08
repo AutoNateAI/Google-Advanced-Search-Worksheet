@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Search Behind the Search - Interactive Worksheet</title>
+  <!-- Bootstrap CSS -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Bootstrap Icons -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.1/font/bootstrap-icons.min.css" rel="stylesheet">
+  <style>
+    /* Custom Styles */
+    :root {
+      --primary-light: #8e44ad;
+      --primary-dark: #3498db;
+      --bg-light: #f8f9fa;
+      --bg-dark: #212529;
+      --text-light: #212529;
+      --text-dark: #f8f9fa;
+    }
+    
+    body {
+      transition: background-color 0.3s, color 0.3s;
+    }
+    
+    body.dark-mode {
+      background-color: var(--bg-dark);
+      color: var(--text-dark);
+    }
+    
+    .card {
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+    }
+    
+    body.dark-mode .card:not(.bg-primary) {
+      background-color: #2a2e33;
+      color: #f8f9fa;
+      border-color: #454d55;
+    }
+    
+    .card-indicator {
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      color: white;
+      font-weight: bold;
+    }
+    
+    .question-card {
+      position: absolute;
+      width: 100%;
+      transition: all 0.5s;
+    }
+    
+    .floating-particle {
+      position: absolute;
+      border-radius: 50%;
+      pointer-events: none;
+      opacity: 0.2;
+      animation: float 15s linear infinite;
+    }
+    
+    @keyframes float {
+      0% {
+        transform: translateY(0px) translateX(0px);
+      }
+      25% {
+        transform: translateY(-20px) translateX(10px);
+      }
+      50% {
+        transform: translateY(0px) translateX(20px);
+      }
+      75% {
+        transform: translateY(20px) translateX(10px);
+      }
+      100% {
+        transform: translateY(0px) translateX(0px);
+      }
+    }
+    
+    .quote-card {
+      transition: transform 0.7s;
+    }
+    
+    .quote-pulse {
+      transform: scale(1.03);
+    }
+    
+    body.dark-mode .form-control,
+    body.dark-mode .form-control:focus {
+      background-color: #333;
+      color: #fff;
+      border-color: #454d55;
+    }
+    
+    .progress {
+      height: 8px;
+      margin-bottom: 5px;
+    }
+    
+    .card-container {
+      position: relative;
+      height: 400px;
+      margin-bottom: 30px;
+    }
+    
+    .export-notification {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1050;
+      animation: bounce 1s;
+    }
+    
+    @keyframes bounce {
+      0%, 20%, 50%, 80%, 100% {transform: translateY(0) translateX(-50%);}
+      40% {transform: translateY(-20px) translateX(-50%);}
+      60% {transform: translateY(-10px) translateX(-50%);}
+    }
+    
+    .pointer {
+      cursor: pointer;
+    }
+    
+    .nav-indicator {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      display: inline-block;
+      margin: 0 4px;
+      transition: transform 0.3s, background-color 0.3s;
+    }
+    
+    .nav-indicator.active {
+      transform: scale(1.2);
+    }
+    
+    .color-shift {
+      animation: colorShift 5s infinite alternate;
+    }
+    
+    @keyframes colorShift {
+      0% {color: var(--primary-light);}
+      100% {color: var(--primary-dark);}
+    }
+  </style>
+</head>
+<body class="py-4">
+  <div class="container">
+    <!-- Header with title and buttons -->
+    <div class="card mb-4">
+      <div class="card-body d-flex justify-content-between align-items-center">
+        <h1 class="h3 mb-0">The Search Behind the Search</h1>
+        <div class="d-flex gap-2">
+          <button id="darkModeToggle" class="btn btn-outline-secondary rounded-circle p-2" aria-label="Toggle dark mode">
+            <i class="bi bi-moon"></i>
+          </button>
+          <button id="exportButton" class="btn btn-primary rounded-circle p-2" aria-label="Export worksheet">
+            <i class="bi bi-download"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Floating particles container -->
+    <div id="particles-container" style="position: fixed; width: 100%; height: 100%; top: 0; left: 0; pointer-events: none; overflow: hidden; z-index: -1;">
+      <!-- Particles will be dynamically added here -->
+    </div>
+    
+    <!-- Quote Card -->
+    <div class="card mb-4 quote-card" id="quoteCard">
+      <div class="card-body">
+        <div class="d-flex align-items-center mb-2">
+          <i class="bi bi-stars me-2"></i>
+          <h5 class="card-title mb-0">Inspiration</h5>
+        </div>
+        <p class="text-center fst-italic" id="quoteText">
+          "The answers you seek are already within you."
+        </p>
+      </div>
+    </div>
+    
+    <!-- Progress Indicators -->
+    <div class="text-center mb-3">
+      <div id="navIndicators" class="mb-2">
+        <!-- Navigation dots will be added here -->
+      </div>
+    </div>
+    
+    <!-- Card Container -->
+    <div class="card-container" id="cardContainer">
+      <!-- Question cards will be added here -->
+    </div>
+    
+    <!-- Progress Bar -->
+    <div class="mb-4">
+      <div class="progress">
+        <div class="progress-bar" id="progressBar" role="progressbar" style="width: 20%;" aria-valuenow="20" aria-valuemin="0" aria-valuemax="100"></div>
+      </div>
+      <div class="d-flex justify-content-between">
+        <small>Start</small>
+        <small id="progressText">20% Complete</small>
+      </div>
+    </div>
+    
+    <!-- Mobile optimization notice -->
+    <div class="text-center text-muted small mt-4">
+      <p>Optimized for both desktop and mobile devices</p>
+    </div>
+  </div>
+  
+  <!-- Export notification (hidden by default) -->
+  <div class="toast export-notification align-items-center text-white bg-primary border-0" role="alert" aria-live="assertive" aria-atomic="true" id="exportNotification" style="display: none;">
+    <div class="d-flex">
+      <div class="toast-body">
+        <i class="bi bi-download me-2"></i>
+        Your worksheet has been exported successfully!
+      </div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+    </div>
+  </div>
+  
+  <!-- Bootstrap JS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+  
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // ----- DATA -----
+      const questions = [
+        "What am I really tapping into when I use Google Trends and search?",
+        "Why do I feel powerful when I uncover trending searches?",
+        "How is this ability to combine search, trends, memes, and products a reflection of who I am becoming?",
+        "What deeper message is my subconscious sending me through this excitement?",
+        "How will I use this awareness to design systems that amplify my ideas and gifts?"
+      ];
+      
+      const quotes = [
+        "The answers you seek are already within you.",
+        "Your search patterns reflect your innermost curiosities.",
+        "In the trends you follow lies a map to your future self.",
+        "Every search is a stepping stone on your unique journey.",
+        "The questions we ask shape the reality we create."
+      ];
+      
+      const encouragements = [
+        "This insight could change everything! ✨",
+        "You're making incredible connections! 🔍",
+        "This reflection shows your unique perspective! 🌟",
+        "You're tapping into something powerful here! 💪",
+        "Your awareness creates unlimited possibilities! 🚀"
+      ];
+      
+      // ----- STATE -----
+      let activeCardIndex = 0;
+      const answers = {
+        q0: '',
+        q1: '',
+        q2: '',
+        q3: '',
+        q4: ''
+      };
+      let darkMode = false;
+      
+      // ----- DOM ELEMENTS -----
+      const cardContainer = document.getElementById('cardContainer');
+      const navIndicators = document.getElementById('navIndicators');
+      const progressBar = document.getElementById('progressBar');
+      const progressText = document.getElementById('progressText');
+      const darkModeToggle = document.getElementById('darkModeToggle');
+      const exportButton = document.getElementById('exportButton');
+      const exportNotification = document.getElementById('exportNotification');
+      const quoteCard = document.getElementById('quoteCard');
+      const quoteText = document.getElementById('quoteText');
+      const particlesContainer = document.getElementById('particles-container');
+      
+      // ----- SETUP -----
+      
+      // Create question cards
+      questions.forEach((question, index) => {
+        // Create the card
+        const card = document.createElement('div');
+        card.className = `card question-card ${index === 0 ? '' : 'd-none'}`;
+        card.id = `card-${index}`;
+        card.style.transform = index === 0 ? 'translateX(0)' : 'translateX(100%)';
+        card.style.opacity = index === 0 ? '1' : '0';
+        
+        // Create card content
+        card.innerHTML = `
+          <div class="card-body">
+            <div class="d-flex align-items-center mb-3">
+              <div class="card-indicator bg-primary me-2">${index + 1}</div>
+              <h5 class="card-title mb-0">Question ${index + 1}</h5>
+            </div>
+            <p class="card-text mb-3">${question}</p>
+            <div class="mb-3">
+              <textarea class="form-control" id="answer-${index}" rows="5" 
+                placeholder="Write your answer here...">${answers['q'+index]}</textarea>
+              <div class="encouragement-text mt-2 fst-italic text-primary d-none" id="encouragement-${index}">
+                ${encouragements[index]}
+              </div>
+            </div>
+            <div class="d-flex justify-content-between">
+              <button class="btn ${index === 0 ? 'btn-outline-secondary disabled' : 'btn-outline-secondary'} prev-btn" 
+                ${index === 0 ? 'disabled' : ''} data-index="${index}">
+                Previous
+              </button>
+              
+              ${index < questions.length - 1 ? 
+                `<button class="btn btn-primary next-btn" data-index="${index}">
+                  Next <i class="bi bi-arrow-right"></i>
+                </button>` : 
+                `<button class="btn btn-primary done-btn" data-index="${index}">
+                  Done <i class="bi bi-download"></i>
+                </button>`
+              }
+            </div>
+          </div>
+        `;
+        
+        cardContainer.appendChild(card);
+        
+        // Add event listeners to textarea
+        setTimeout(() => {
+          const textarea = document.getElementById(`answer-${index}`);
+          textarea.addEventListener('input', function() {
+            answers['q'+index] = this.value;
+            const encouragementEl = document.getElementById(`encouragement-${index}`);
+            if (this.value.trim().length > 0) {
+              encouragementEl.classList.remove('d-none');
+            } else {
+              encouragementEl.classList.add('d-none');
+            }
+          });
+        }, 0);
+        
+        // Create navigation indicator
+        const indicator = document.createElement('div');
+        indicator.className = `nav-indicator ${index === 0 ? 'active bg-primary' : 'bg-secondary'} pointer`;
+        indicator.dataset.index = index;
+        navIndicators.appendChild(indicator);
+      });
+      
+      // Add event listeners to buttons
+      document.querySelectorAll('.prev-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+          const index = parseInt(this.dataset.index);
+          if (index > 0) {
+            navigateToCard(index - 1);
+          }
+        });
+      });
+      
+      document.querySelectorAll('.next-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+          const index = parseInt(this.dataset.index);
+          if (index < questions.length - 1) {
+            navigateToCard(index + 1);
+          }
+        });
+      });
+      
+      document.querySelectorAll('.done-btn').forEach(btn => {
+        btn.addEventListener('click', exportWorksheet);
+      });
+      
+      // Navigation indicator click events
+      document.querySelectorAll('.nav-indicator').forEach(indicator => {
+        indicator.addEventListener('click', function() {
+          navigateToCard(parseInt(this.dataset.index));
+        });
+      });
+      
+      // Dark Mode Toggle
+      darkModeToggle.addEventListener('click', toggleDarkMode);
+      
+      // Export Button
+      exportButton.addEventListener('click', exportWorksheet);
+      
+      // Create floating particles
+      createParticles();
+      
+      // Start quote rotation
+      setInterval(rotateQuotes, 10000);
+      setInterval(() => {
+        quoteCard.classList.toggle('quote-pulse');
+      }, 5000);
+      
+      // ----- FUNCTIONS -----
+      
+      // Navigate to a specific card
+      function navigateToCard(index) {
+        if (index < 0 || index >= questions.length) return;
+        
+        const currentCard = document.getElementById(`card-${activeCardIndex}`);
+        const targetCard = document.getElementById(`card-${index}`);
+        
+        // Determine animation direction
+        const direction = index > activeCardIndex ? 1 : -1;
+        
+        // Animate current card out
+        currentCard.style.transform = `translateX(${-100 * direction}%)`;
+        currentCard.style.opacity = '0';
+        
+        // After a short delay, hide current and show target
+        setTimeout(() => {
+          currentCard.classList.add('d-none');
+          targetCard.classList.remove('d-none');
+          
+          // Position target card for entrance
+          targetCard.style.transform = `translateX(${100 * direction}%)`;
+          targetCard.style.opacity = '0';
+          
+          // Force reflow
+          void targetCard.offsetWidth;
+          
+          // Animate target card in
+          targetCard.style.transform = 'translateX(0)';
+          targetCard.style.opacity = '1';
+        }, 300);
+        
+        // Update active card
+        activeCardIndex = index;
+        
+        // Update indicators
+        document.querySelectorAll('.nav-indicator').forEach((ind, i) => {
+          if (i === index) {
+            ind.classList.add('active', 'bg-primary');
+            ind.classList.remove('bg-secondary');
+          } else {
+            ind.classList.remove('active', 'bg-primary');
+            ind.classList.add('bg-secondary');
+          }
+        });
+        
+        // Update progress
+        const progress = ((index + 1) / questions.length) * 100;
+        progressBar.style.width = `${progress}%`;
+        progressBar.setAttribute('aria-valuenow', progress);
+        progressText.textContent = `${Math.round(progress)}% Complete`;
+      }
+      
+      // Toggle dark mode
+      function toggleDarkMode() {
+        darkMode = !darkMode;
+        document.body.classList.toggle('dark-mode', darkMode);
+        
+        // Update toggle button icon
+        darkModeToggle.innerHTML = darkMode ? 
+          '<i class="bi bi-sun"></i>' : 
+          '<i class="bi bi-moon"></i>';
+        
+        // Update primary button colors
+        const primaryButtons = document.querySelectorAll('.btn-primary');
+        if (darkMode) {
+          primaryButtons.forEach(btn => {
+            btn.classList.remove('btn-primary');
+            btn.classList.add('btn-info');
+          });
+          progressBar.classList.remove('bg-primary');
+          progressBar.classList.add('bg-info');
+          document.querySelectorAll('.nav-indicator.active, .card-indicator').forEach(el => {
+            el.classList.remove('bg-primary');
+            el.classList.add('bg-info');
+          });
+        } else {
+          document.querySelectorAll('.btn-info').forEach(btn => {
+            btn.classList.remove('btn-info');
+            btn.classList.add('btn-primary');
+          });
+          progressBar.classList.remove('bg-info');
+          progressBar.classList.add('bg-primary');
+          document.querySelectorAll('.nav-indicator.active, .card-indicator').forEach(el => {
+            el.classList.remove('bg-info');
+            el.classList.add('bg-primary');
+          });
+        }
+      }
+      
+      // Export worksheet
+      function exportWorksheet() {
+        // Prepare content for export
+        const content = questions.map((q, i) => 
+          `Question ${i+1}: ${q}\nAnswer: ${answers['q'+i] || "Not answered"}`
+        ).join('\n\n');
+        
+        // In a real implementation, you would generate a PDF here
+        
+        // Show notification
+        exportNotification.style.display = 'block';
+        
+        // Hide after 3 seconds
+        setTimeout(() => {
+          exportNotification.style.display = 'none';
+        }, 3000);
+        
+        // In a non-sandboxed environment, we would create and trigger download:
+        /*
+        const element = document.createElement('a');
+        const file = new Blob([content], {type: 'application/pdf'});
+        element.href = URL.createObjectURL(file);
+        element.download = "Search-Behind-Search-Worksheet.pdf";
+        document.body.appendChild(element);
+        element.click();
+        document.body.removeChild(element);
+        */
+      }
+      
+      // Create floating particles
+      function createParticles() {
+        for (let i = 0; i < 15; i++) {
+          const particle = document.createElement('div');
+          particle.className = 'floating-particle';
+          
+          // Random properties
+          const size = Math.random() * 20 + 10;
+          particle.style.width = `${size}px`;
+          particle.style.height = `${size}px`;
+          particle.style.left = `${Math.random() * 100}vw`;
+          particle.style.top = `${Math.random() * 100}vh`;
+          particle.style.backgroundColor = darkMode ? 'var(--primary-dark)' : 'var(--primary-light)';
+          
+          // Animation with random duration and delay
+          particle.style.animationDuration = `${Math.random() * 20 + 10}s`;
+          particle.style.animationDelay = `${Math.random() * 5}s`;
+          
+          particlesContainer.appendChild(particle);
+        }
+      }
+      
+      // Rotate quotes
+      function rotateQuotes() {
+        const currentIndex = Math.floor(activeCardIndex / questions.length * quotes.length);
+        const nextIndex = (currentIndex + 1) % quotes.length;
+        
+        // Fade out
+        quoteText.style.opacity = '0';
+        
+        // Change text and fade in
+        setTimeout(() => {
+          quoteText.textContent = `"${quotes[nextIndex]}"`;
+          quoteText.style.opacity = '1';
+        }, 500);
+      }
+      
+      // Update particles when dark mode changes
+      function updateParticleColors() {
+        document.querySelectorAll('.floating-particle').forEach(particle => {
+          particle.style.backgroundColor = darkMode ? 'var(--primary-dark)' : 'var(--primary-light)';
+        });
+      }
+      
+      // Check for textarea changes to show encouragement
+      function checkTextareas() {
+        for (let i = 0; i < questions.length; i++) {
+          const textarea = document.getElementById(`answer-${i}`);
+          const encouragementEl = document.getElementById(`encouragement-${i}`);
+          
+          if (textarea && encouragementEl && textarea.value.trim().length > 0) {
+            encouragementEl.classList.remove('d-none');
+          }
+        }
+      }
+      
+      // Initialize
+      updateParticleColors();
+      checkTextareas();
+      
+      // Listen for dark mode changes to update particles
+      darkModeToggle.addEventListener('click', updateParticleColors);
+    });
+  </script>
+</body>
+</html>
