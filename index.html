@@ -575,7 +575,8 @@
             doc.setFontSize(10);
             doc.setTextColor(titleFont);
             doc.setFont('helvetica', 'italic');
-            doc.text(`"${encouragements[i]}"`, pageWidth - margin, yPosition, { align: 'right' });
+            // Center the encouragement text
+            doc.text(`"${encouragements[i]}"`, pageWidth / 2, yPosition, { align: 'center' });
             yPosition += 8;
           }
           
