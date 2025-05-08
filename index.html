@@ -4,6 +4,22 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>The Search Behind the Search - Interactive Worksheet</title>
+  
+  <!-- Social Media Preview Tags -->
+  <meta property="og:title" content="The Search Behind the Search - Interactive Worksheet">
+  <meta property="og:description" content="Gain deeper insights about your search behaviors with this interactive worksheet">
+  <meta property="og:image" content="assets/images/link-preview-image.png">
+  <meta property="og:type" content="website">
+  
+  <!-- Twitter Card Tags -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="The Search Behind the Search - Interactive Worksheet">
+  <meta name="twitter:description" content="Gain deeper insights about your search behaviors with this interactive worksheet">
+  <meta name="twitter:image" content="assets/images/link-preview-image.png">
+  
+  <!-- iMessage Preview Support -->
+  <link rel="apple-touch-icon-precomposed" href="assets/images/link-preview-image.png">
+  
   <!-- Bootstrap CSS -->
   <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
   <!-- Bootstrap Icons -->
@@ -231,6 +247,10 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   
+  <!-- Emoji Handling for PDF Export -->
+  <script src="https://cdn.jsdelivr.net/npm/emoji-toolkit@7.0.0/lib/js/joypixels.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/emoji-toolkit@7.0.0/extras/css/joypixels.min.css">
+
   <script>
     document.addEventListener('DOMContentLoaded', function() {
       // ----- DATA -----
@@ -513,6 +533,7 @@
         const titleFont = darkMode ? '#3498db' : '#8e44ad';
         const textColor = '#333333';
         const pageWidth = doc.internal.pageSize.getWidth();
+        const pageHeight = doc.internal.pageSize.getHeight();
         const margin = 20;
         const contentWidth = pageWidth - (margin * 2);
         
@@ -538,20 +559,63 @@
         
         let yPosition = margin + 20;
         
+        // Helper function to convert emojis to their unicode representation
+        function convertEmojis(text) {
+          return text ? window.joypixels.shortnameToUnicode(text) : text;
+        }
+        
+        // Calculate space needed for a question/answer section
+        function calculateSectionHeight(questionText, answerText, hasEncouragement) {
+          // Process emojis for calculations
+          questionText = convertEmojis(questionText);
+          answerText = convertEmojis(answerText || "Not answered");
+          
+          // Calculate lines and space needed
+          const questionLines = doc.splitTextToSize(questionText, contentWidth - 5).length;
+          const answerLines = doc.splitTextToSize(answerText, contentWidth - 5).length;
+          
+          // Base height + question height + spacing + answer label + answer height + encouragement (if applicable)
+          let height = 6 + (questionLines * 6) + 6 + (answerLines * 6) + 10;
+          if (answerText && answerText.trim() !== "Not answered") {
+            height += hasEncouragement ? 8 : 0; // Add space for encouragement
+          }
+          if (questionLines > 0 || answerLines > 0) {
+            height += 12; // Additional spacing for separator
+          }
+          
+          return height;
+        }
+        
         // Add each question and answer
         for (let i = 0; i < questions.length; i++) {
+          const answer = answers['q' + i] || "Not answered";
+          const hasEncouragement = answers['q' + i] && answers['q' + i].trim().length > 0;
+          
+          // Calculate if this section will fit on the current page
+          const sectionHeight = calculateSectionHeight(questions[i], answer, hasEncouragement);
+          const remainingSpace = pageHeight - yPosition - margin;
+          
+          // If section won't fit, start a new page
+          if (sectionHeight > remainingSpace) {
+            doc.addPage();
+            yPosition = margin;
+          }
+          
           // Add question number and text
           doc.setFont('helvetica', 'bold');
           doc.setFontSize(12);
           doc.setTextColor(titleFont);
           doc.text(`Question ${i + 1}:`, margin, yPosition);
           
-          // Add question text
+          // Add question text with emoji support
           doc.setFont('helvetica', 'normal');
           doc.setTextColor(textColor);
           
+          // Process question text for emojis
+          const questionText = convertEmojis(questions[i]);
+          
           // Handle long questions with text wrapping
-          const questionLines = doc.splitTextToSize(questions[i], contentWidth - 5);
+          const questionLines = doc.splitTextToSize(questionText, contentWidth - 5);
           doc.text(questionLines, margin, yPosition + 6);
           
           yPosition += 6 + (questionLines.length * 6);
@@ -560,23 +624,25 @@
           doc.setFont('helvetica', 'bold');
           doc.text('Your Answer:', margin, yPosition);
           
-          // Add answer text
+          // Add answer text with emoji support
           doc.setFont('helvetica', 'normal');
-          const answer = answers['q' + i] || "Not answered";
+          
+          // Process answer for emojis
+          const processedAnswer = convertEmojis(answer);
           
           // Handle long answers with text wrapping
-          const answerLines = doc.splitTextToSize(answer, contentWidth - 5);
+          const answerLines = doc.splitTextToSize(processedAnswer, contentWidth - 5);
           doc.text(answerLines, margin, yPosition + 6);
           
           yPosition += 10 + (answerLines.length * 6);
           
           // Add a quote or encouragement if there's an answer
-          if (answers['q' + i] && answers['q' + i].trim().length > 0) {
+          if (hasEncouragement) {
             doc.setFontSize(10);
             doc.setTextColor(titleFont);
             doc.setFont('helvetica', 'italic');
             // Center the encouragement text
-            doc.text(`"${encouragements[i]}"`, pageWidth / 2, yPosition, { align: 'center' });
+            doc.text(`"${convertEmojis(encouragements[i])}"`, pageWidth / 2, yPosition, { align: 'center' });
             yPosition += 8;
           }
           
@@ -586,21 +652,22 @@
             doc.line(margin, yPosition, pageWidth - margin, yPosition);
             yPosition += 12;
           }
-          
-          // Check if we need a new page
-          if (yPosition > doc.internal.pageSize.getHeight() - 20 && i < questions.length - 1) {
-            doc.addPage();
-            yPosition = margin;
-          }
         }
         
-        // Add footer
-        const lastPage = doc.internal.getNumberOfPages();
-        doc.setPage(lastPage);
-        const finalYPosition = doc.internal.pageSize.getHeight() - 10;
-        doc.setFontSize(9);
-        doc.setTextColor(100, 100, 100);
-        doc.text('The Search Behind the Search - Personal Insight Worksheet', pageWidth / 2, finalYPosition, { align: 'center' });
+        // Add page numbers and footer to all pages
+        const totalPages = doc.internal.getNumberOfPages();
+        for (let j = 1; j <= totalPages; j++) {
+          doc.setPage(j);
+          const finalYPosition = doc.internal.pageSize.getHeight() - 10;
+          
+          // Add page number
+          doc.setFontSize(9);
+          doc.setTextColor(100, 100, 100);
+          doc.text(`Page ${j} of ${totalPages}`, pageWidth - margin, finalYPosition, { align: 'right' });
+          
+          // Add footer
+          doc.text('The Search Behind the Search - Personal Insight Worksheet', pageWidth / 2, finalYPosition, { align: 'center' });
+        }
         
         // Save PDF
         doc.save('Search-Behind-Search-Worksheet.pdf');
